@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0A0E14">
+<title>ASP — автопостинг в соцсети по расписанию</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ BASE ============ */
+:root{
+  --bg:#0A0E14; --bg2:#0E131C; --panel:#121927; --panel2:#0C121B;
+  --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.16);
+  --text:#EEF3FA; --mut:#8E99AD; --dim:#5D6activate778;
+  --acc:#C8FF3D; --acc-soft:rgba(200,255,61,.12);
+  --vio:#8F7BFF; --red:#FF5D5D; --ok:#3DDC97;
+  --fd:'Unbounded',sans-serif; --fb:'Manrope',sans-serif; --fm:'JetBrains Mono',monospace;
+  --r:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+body{background:var(--bg);color:var(--text);font:400 16px/1.6 var(--fb);overflow-x:hidden}
+body::after{content:"";position:fixed;inset:0;z-index:3;pointer-events:none;opacity:.045;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E")}
+::selection{background:var(--acc);color:#0A0E14}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+[hidden]{display:none!important}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#232c3d;border-radius:8px}
+::-webkit-scrollbar-track{background:var(--bg)}
+
+.container{max-width:1240px;margin:0 auto;padding:0 24px}
+.mono{font-family:var(--fm)}
+section{padding:96px 0;scroll-margin-top:86px}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease;transition-delay:var(--d,0s)}
+.rv.in{opacity:1;transform:none}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:14px 26px;border-radius:12px;
+  font:700 15px var(--fb);letter-spacing:.01em;border:1px solid transparent;transition:transform .25s,box-shadow .25s,background .25s,border-color .25s;white-space:nowrap}
+.btn svg{width:16px;height:16px}
+.btn-p{background:var(--acc);color:#0B0F16}
+.btn-p:hover{transform:translateY(-2px);box-shadow:0 10px 34px rgba(200,255,61,.28)}
+.btn-p:active{transform:translateY(0)}
+.btn-g{border-color:var(--line2);color:var(--text)}
+.btn-g:hover{border-color:var(--acc);color:var(--acc)}
+.btn-sm{padding:9px 18px;font-size:13px;border-radius:10px}
+.btn-block{width:100%}
+
+/* typography */
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font:600 12px var(--fm);letter-spacing:.22em;text-transform:uppercase;color:var(--acc)}
+.eyebrow::before{content:"";width:26px;height:1px;background:var(--acc)}
+.sec-title{font:700 clamp(1.7rem,3.3vw,2.7rem)/1.15 var(--fd);letter-spacing:-.01em;margin:14px 0 12px}
+.sec-sub{color:var(--mut);max-width:560px}
+
+/* logo */
+.logo{display:inline-flex;align-items:center;gap:10px;font:800 20px var(--fd);letter-spacing:.02em}
+.logo-mark{width:34px;height:34px;border-radius:9px;background:var(--acc);display:grid;place-items:center;color:#0B0F16;flex:none}
+.logo-mark svg{width:18px;height:18px}
+.logo small{font:500 10px var(--fm);color:var(--mut);letter-spacing:.14em;display:block;line-height:1;margin-top:3px;text-transform:uppercase}
+
+/* net chips */
+.nchip{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:8px;font:600 10px var(--fm);color:#06090F;flex:none}
+.n-tg{background:#33B7F0}.n-vk{background:#5D9CF5}.n-yt{background:#FF6B5E}.n-ok{background:#FFAA5C}.n-dz{background:#C9CFDA}
+.nchip.big{width:34px;height:34px;border-radius:10px;font-size:11px}
+
+.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;font:600 11px var(--fm);letter-spacing:.08em;text-transform:uppercase}
+.pill-acc{background:var(--acc-soft);color:var(--acc)}
+.pill-dim{background:rgba(255,255,255,.06);color:var(--mut)}
+
+/* ============ HEADER ============ */
+.hdr{position:fixed;top:0;left:0;right:0;z-index:50;height:70px;border-bottom:1px solid var(--line);background:rgba(10,14,20,.88);backdrop-filter:blur(10px)}
+body.cabinet-mode .hdr{display:none}
+.hdr-in{max-width:1280px;margin:0 auto;height:100%;padding:0 24px;display:flex;align-items:center;gap:28px}
+.hdr nav{display:flex;gap:6px;margin-left:8px}
+.hdr nav a{padding:9px 14px;border-radius:9px;font:600 14px var(--fb);color:var(--mut);transition:.2s}
+.hdr nav a:hover{color:var(--acc);background:var(--acc-soft)}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.hdr-clock{font:600 12px var(--fm);color:var(--mut);border:1px solid var(--line);padding:8px 12px;border-radius:9px;display:flex;gap:8px;align-items:center}
+.hdr-clock i{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+#burger{display:none;width:42px;height:42px;border:1px solid var(--line2);border-radius:10px;place-items:center}
+#burger svg{width:20px;height:20px}
+.mmenu{position:fixed;top:70px;left:0;right:0;z-index:49;background:var(--bg2);border-bottom:1px solid var(--line);padding:14px 24px 22px;display:none;flex-direction:column;gap:4px}
+.mmenu.open{display:flex}
+.mmenu a{padding:13px 8px;border-bottom:1px solid var(--line);font:600 15px var(--fb);color:var(--mut)}
+.mmenu a:last-child{border:0}
+
+/* ============ HERO ============ */
+.hero{padding:158px 0 70px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(600px 420px at 78% 30%,rgba(200,255,61,.07),transparent 65%),
+  radial-gradient(500px 400px at 8% 80%,rgba(143,123,255,.06),transparent 60%)}
+.hero-grid{display:grid;grid-template-columns:1.04fr .96fr;gap:56px;align-items:center;position:relative}
+.hero h1{font:800 clamp(2.15rem,4.6vw,4rem)/1.06 var(--fd);letter-spacing:-.015em;margin:22px 0 20px}
+.hero h1 span{display:block;overflow:hidden}
+.hero h1 span i{display:block;font-style:normal;transform:translateY(112%);transition:transform .9s cubic-bezier(.2,.7,.2,1);transition-delay:var(--d)}
+body.loaded .hero h1 span i{transform:none}
+.hero h1 em{font-style:normal;color:var(--acc)}
+.hero-sub{color:var(--mut);font-size:17px;max-width:480px;margin-bottom:30px}
+.hero-sub b{color:var(--text);font-weight:600}
+.hero-cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.hero-note{margin-top:22px;font:500 12px var(--fm);color:var(--mut);letter-spacing:.06em;display:flex;gap:18px;flex-wrap:wrap}
+.hero-note span{display:flex;gap:7px;align-items:center}
+.hero-note svg{width:13px;height:13px;color:var(--acc)}
+
+/* console */
+.console-wrap{position:relative}
+.orbit{position:absolute;top:-58px;right:-70px;width:280px;height:280px;border:1px dashed rgba(200,255,61,.28);border-radius:50%;animation:spin 36s linear infinite;pointer-events:none}
+.orbit::after{content:"";position:absolute;top:-4px;left:50%;width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 16px var(--acc)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.console{position:relative;background:linear-gradient(180deg,#111827,#0D1420);border:1px solid var(--line2);border-radius:18px;padding:20px 20px 16px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.con-head{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--line);font:600 12px var(--fm);letter-spacing:.12em;color:var(--mut);text-transform:uppercase}
+.con-head .dot{width:8px;height:8px;border-radius:50%;background:var(--acc);animation:pulse 1.4s infinite}
+.con-head .js-clock{margin-left:auto;color:var(--text);letter-spacing:.06em}
+.con-item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}
+.con-item:last-of-type{border-bottom:0}
+.con-txt{min-width:0}
+.con-txt b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.con-txt small{font:500 11px var(--fm);color:var(--mut)}
+.con-st{font:600 10px var(--fm);letter-spacing:.1em;text-transform:uppercase;text-align:right}
+.con-item[data-st="pub"] .con-st{color:var(--ok)}
+.con-item[data-st="ing"] .con-st{color:var(--acc)}
+.con-item[data-st="plan"] .con-st{color:var(--mut)}
+.con-item .bar{grid-column:1/-1;height:3px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden;display:none}
+.con-item[data-st="ing"] .bar,.con-item[data-st="pub"] .bar{display:block}
+.con-item .bar i{display:block;height:100%;background:var(--acc);width:0;transition:width .9s ease;border-radius:4px}
+.con-item[data-st="pub"] .bar i{background:var(--ok)}
+.con-foot{margin-top:14px;padding-top:13px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}
+.tl{margin-top:26px;position:relative;display:flex;justify-content:space-between;padding:0 6px}
+.tl::before{content:"";position:absolute;left:0;right:0;top:5px;height:1px;background:repeating-linear-gradient(90deg,var(--line2) 0 8px,transparent 8px 16px)}
+.tl span{position:relative;font:600 11px var(--fm);color:var(--mut);padding-top:16px}
+.tl span::before{content:"";position:absolute;top:1px;left:0;width:9px;height:9px;border-radius:50%;background:var(--bg);border:2px solid var(--mut)}
+.tl span.now{color:var(--acc)}
+.tl span.now::before{background:var(--acc);border-color:var(--acc);box-shadow:0 0 0 5px rgba(200,255,61,.18);animation:pulse 2s infinite}
+.float-chip{position:absolute;font:600 12px var(--fm);padding:9px 14px;border-radius:11px;background:var(--panel);border:1px solid var(--line2);box-shadow:0 14px 34px rgba(0,0,0,.45);animation:floaty 5s ease-in-out infinite alternate;z-index:2}
+.fc1{top:-18px;left:-26px;color:var(--acc)}
+.fc2{bottom:-16px;right:-14px;animation-delay:1.4s}
+@keyframes floaty{from{transform:translateY(-5px)}to{transform:translateY(7px)}}
+
+/* ============ MARQUEE ============ */
+.marquee{border-block:1px solid var(--line);overflow:hidden;background:var(--bg2)}
+.mtrack{display:flex;width:max-content;animation:mq 30s linear infinite}
+.marquee.rev .mtrack{animation-direction:reverse;opacity:.55}
+.mtrack span{display:flex;align-items:center;gap:26px;padding:13px 13px;font:600 12px var(--fm);letter-spacing:.2em;text-transform:uppercase;color:var(--mut);white-space:nowrap}
+.mtrack b{color:var(--acc);font-weight:600}
+@keyframes mq{to{transform:translateX(-50%)}}
+
+/* ============ FEATURES ============ */
+.feat-grid{display:grid;grid-template-columns:380px 1fr;gap:64px;align-items:start}
+.feat-left{position:sticky;top:100px}
+.feat-left p{color:var(--mut);margin:0 0 26px}
+.feat-idx{font:700 13px var(--fm);color:var(--acc);letter-spacing:.2em}
+.feat-item{display:grid;grid-template-columns:1fr 300px;gap:34px;padding:38px 22px;border-top:1px solid var(--line);transition:background .3s,border-color .3s;position:relative}
+.feat-item:last-child{border-bottom:1px solid var(--line)}
+.feat-item:hover{background:rgba(255,255,255,.02)}
+.feat-item:hover .feat-num{color:var(--acc)}
+.feat-num{font:700 13px var(--fm);color:var(--mut);letter-spacing:.2em;transition:.3s;display:block;margin-bottom:14px}
+.feat-item h3{font:700 21px var(--fd);margin-bottom:12px}
+.feat-item p{color:var(--mut);font-size:15px;max-width:460px}
+.feat-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+/* mocks */
+.mock{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:16px;align-self:center;transition:transform .35s,border-color .35s;transform:rotate(-1deg)}
+.feat-item:hover .mock{transform:rotate(0) translateY(-4px);border-color:rgba(200,255,61,.35)}
+.mock-row{height:8px;border-radius:5px;background:rgba(255,255,255,.09);margin-bottom:9px}
+.mock-row.w60{width:60%}.mock-row.w80{width:80%}.mock-row.w40{width:40%}
+.mock-time{display:inline-flex;align-items:center;gap:7px;background:var(--acc-soft);color:var(--acc);font:600 12px var(--fm);padding:7px 12px;border-radius:9px;margin:8px 0 12px}
+.mock-time svg{width:13px;height:13px}
+.mock-nets{display:flex;gap:6px}
+.feed-line{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;background:var(--bg2);opacity:0;animation:feedIn 6s infinite;animation-delay:var(--d)}
+.feed-line i{width:8px;height:8px;border-radius:50%;background:var(--vio);flex:none}
+.feed-line b{font:500 11px var(--fm);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+@keyframes feedIn{0%{opacity:0;transform:translateX(18px)}12%,82%{opacity:1;transform:none}100%{opacity:0;transform:translateX(-18px)}}
+.mock-video{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:16/9;margin-bottom:12px}
+.mock-video img{width:100%;height:100%;object-fit:cover}
+.mock-video::after{content:"";position:absolute;inset:0;display:grid;place-items:center;background:rgba(6,9,13,.35)}
+.play-tri{position:absolute;z-index:2;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:var(--acc);display:grid;place-items:center}
+.play-tri::after{content:"";border-style:solid;border-width:7px 0 7px 11px;border-color:transparent transparent transparent #0B0F16;margin-left:2px}
+.vprog{height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.vprog i{display:block;height:100%;background:var(--vio);animation:vp 3.4s ease-in-out infinite alternate;border-radius:4px}
+@keyframes vp{from{width:14%}to{width:94%}}
+.mock-note{font:500 10px var(--fm);color:var(--mut);margin-top:9px;letter-spacing:.06em}
+
+/* ============ INFO / ABOUT ============ */
+.about{background:linear-gradient(180deg,rgba(200,255,61,.045),transparent 60%);border-block:1px solid var(--line)}
+.about-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center}
+.about-grid .sec-sub{margin-bottom:28px}
+.about-img{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--line2);aspect-ratio:4/3.4}
+.about-img img{width:100%;height:100%;object-fit:cover;animation:kenburns 16s ease-in-out infinite alternate}
+@keyframes kenburns{from{transform:scale(1) translate(0,0)}to{transform:scale(1.12) translate(-2%,2%)}}
+.about-img .float-chip{background:rgba(13,18,28,.92)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:64px}
+.stat{background:var(--bg2);padding:28px 30px}
+.stat b{display:block;font:700 clamp(1.6rem,2.6vw,2.3rem) var(--fd);color:var(--acc);letter-spacing:-.01em}
+.stat span{font:500 13px var(--fb);color:var(--mut)}
+
+/* ============ PRICING ============ */
+.price-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:44px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:11px;padding:4px;gap:4px}
+.seg-btn{padding:9px 18px;border-radius:8px;font:600 13px var(--fb);color:var(--mut);transition:.25s}
+.seg-btn.on{background:var(--acc);color:#0B0F16}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.plan{background:var(--panel2);border:1px solid var(--line);border-radius:18px;padding:32px 28px;display:flex;flex-direction:column;gap:0;transition:transform .3s,border-color .3s,box-shadow .3s;position:relative}
+.plan:hover{transform:translateY(-6px);border-color:var(--line2)}
+.plan-name{font:700 15px var(--fd);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.plan-price{display:flex;align-items:baseline;gap:8px;margin:20px 0 6px}
+.plan-price b{font:800 clamp(2rem,3vw,2.7rem) var(--fd);letter-spacing:-.02em}
+.plan-price b.flip{animation:flip .4s ease}
+@keyframes flip{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:none}}
+.plan-price span{font:500 13px var(--fm);color:var(--mut)}
+.plan-save{font:600 11px var(--fm);color:var(--acc);height:16px;margin-bottom:12px}
+.plan ul{list-style:none;display:flex;flex-direction:column;gap:11px;margin:6px 0 26px;flex:1}
+.plan li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--mut)}
+.plan li svg{width:15px;height:15px;color:var(--acc);flex:none;margin-top:4px}
+.plan.pro{border-color:rgba(200,255,61,.5);background:linear-gradient(180deg,rgba(200,255,61,.07),var(--panel2) 55%)}
+.plan.pro:hover{box-shadow:0 24px 60px rgba(200,255,61,.12)}
+.plan-badge{position:absolute;top:-13px;right:22px;background:var(--acc);color:#0B0F16;font:700 11px var(--fm);letter-spacing:.1em;padding:6px 13px;border-radius:999px;text-transform:uppercase}
+
+/* ============ PROMO ============ */
+.promo{padding-bottom:110px}
+.coupon{position:relative;border:1.5px dashed rgba(200,255,61,.5);border-radius:22px;padding:56px 52px;background:radial-gradient(600px 300px at 80% 0%,rgba(200,255,61,.09),transparent 60%),var(--bg2);overflow:hidden}
+.coupon::before,.coupon::after{content:"";position:absolute;top:50%;width:34px;height:34px;border-radius:50%;background:var(--bg);border:1.5px dashed rgba(200,255,61,.5);transform:translateY(-50%)}
+.coupon::before{left:-18px}.coupon::after{right:-18px}
+.promo-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center}
+.coupon h2{font:800 clamp(1.5rem,3vw,2.4rem)/1.2 var(--fd);margin:16px 0 12px}
+.coupon h2 em{font-style:normal;color:var(--acc)}
+.coupon p{color:var(--mut);max-width:440px}
+.promo-form{display:flex;gap:12px}
+.promo-form input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:15px 18px;color:var(--text);font:500 15px var(--fb);transition:border-color .25s}
+.promo-form input:focus{outline:none;border-color:var(--acc)}
+.promo-form input.err{border-color:var(--red);animation:shake .4s}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.promo-timer{margin-top:18px;font:600 13px var(--fm);color:var(--mut);display:flex;align-items:center;gap:9px}
+.promo-timer b{color:var(--acc);font-weight:600;letter-spacing:.06em}
+.promo-timer svg{width:15px;height:15px;color:var(--acc)}
+.promo-fine{margin-top:12px;font-size:12px;color:var(--mut)}
+
+/* ============ FOOTER ============ */
+footer{border-top:1px solid var(--line);padding:64px 0 30px;background:var(--bg2)}
+.foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:44px;margin-bottom:52px}
+.foot-grid p{color:var(--mut);font-size:14px;margin-top:16px;max-width:300px}
+.foot-col b{display:block;font:600 12px var(--fm);letter-spacing:.18em;text-transform:uppercase;color:var(--mut);margin-bottom:18px}
+.foot-col a,.foot-col button{display:block;padding:6px 0;font-size:15px;color:var(--text);opacity:.85;transition:.2s;text-align:left}
+.foot-col a:hover,.foot-col button:hover{color:var(--acc);opacity:1;transform:translateX(3px)}
+.foot-bottom{border-top:1px solid var(--line);padding-top:24px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font:500 12px var(--fm);color:var(--mut)}
+
+/* ============ MODALS ============ */
+.overlay{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:20px;background:rgba(5,8,13,.74);backdrop-filter:blur(6px);opacity:0;transition:opacity .25s}
+.overlay.on{opacity:1}
+.modal{width:min(460px,100%);background:var(--panel);border:1px solid var(--line2);border-radius:20px;padding:34px 32px;position:relative;transform:translateY(20px) scale(.97);transition:transform .3s cubic-bezier(.2,.7,.3,1.2);max-height:90vh;overflow:auto}
+.overlay.on .modal{transform:none}
+.m-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border:1px solid var(--line);border-radius:10px;display:grid;place-items:center;color:var(--mut);transition:.2s}
+.m-close:hover{color:var(--red);border-color:var(--red);transform:rotate(90deg)}
+.m-close svg{width:15px;height:15px}
+.modal h3{font:700 22px var(--fd);margin-bottom:8px;padding-right:36px}
+.modal .m-sub{color:var(--mut);font-size:14px;margin-bottom:24px}
+.field{margin-bottom:16px}
+.field label{display:block;font:600 11px var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:8px}
+.field input,.field textarea{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:11px;padding:14px 16px;color:var(--text);font:500 15px var(--fb);transition:border-color .25s}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--acc)}
+.field input.err{border-color:var(--red);animation:shake .4s}
+.form-err{color:var(--red);font-size:13px;margin:-6px 0 14px;display:none}
+.form-err.on{display:block}
+/* thanks */
+.thanks-check{width:74px;height:74px;border-radius:50%;background:var(--acc-soft);display:grid;place-items:center;margin-bottom:22px}
+.thanks-check svg{width:34px;height:34px;color:var(--acc)}
+.overlay.on .thanks-check{animation:pop .55s cubic-bezier(.2,.9,.3,1.4) both .1s}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+/* auth */
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg2);border:1px solid var(--line);padding:4px;border-radius:11px;margin-bottom:24px}
+.auth-tab{padding:10px;border-radius:8px;font:600 14px var(--fb);color:var(--mut);transition:.2s}
+.auth-tab.on{background:var(--panel2);color:var(--text);border:1px solid var(--line2)}
+.soc-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.soc-btn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:15px 8px;border:1px solid var(--line2);border-radius:12px;font:600 12px var(--fb);color:var(--mut);transition:.25s}
+.soc-btn:hover{border-color:var(--acc);color:var(--text);transform:translateY(-2px)}
+.soc-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font:700 12px var(--fm);color:#06090F}
+.divider{display:flex;align-items:center;gap:14px;margin:22px 0;color:var(--mut);font:500 11px var(--fm);letter-spacing:.14em;text-transform:uppercase}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.auth-msg{display:none;margin-top:16px;padding:12px 14px;border-radius:11px;font-size:13.5px;font-weight:600}
+.auth-msg.on{display:flex;gap:9px;align-items:center;animation:panelIn .3s}
+.auth-msg.ok{background:rgba(61,220,151,.12);color:var(--ok);border:1px solid rgba(61,220,151,.35)}
+.auth-msg.bad{background:rgba(255,93,93,.1);color:var(--red);border:1px solid rgba(255,93,93,.35)}
+
+/* ============ TOASTS ============ */
+#toasts{position:fixed;right:22px;bottom:22px;z-index:130;display:flex;flex-direction:column;gap:10px}
+.toast{display:flex;gap:11px;align-items:center;background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--acc);border-radius:12px;padding:13px 17px;font-size:14px;font-weight:600;box-shadow:0 18px 44px rgba(0,0,0,.5);animation:toastIn .35s cubic-bezier(.2,.8,.3,1.2);max-width:340px}
+.toast.err{border-left-color:var(--red)}
+.toast svg{width:17px;height:17px;color:var(--acc);flex:none}
+.toast.err svg{color:var(--red)}
+.toast.out{opacity:0;transform:translateX(24px);transition:.35s}
+@keyframes toastIn{from{opacity:0;transform:translateX(30px)}}
+
+/* ============ CABINET ============ */
+#view-cabinet{display:none}
+body.cabinet-mode #view-landing{display:none}
+body.cabinet-mode #view-cabinet{display:flex;min-height:100vh}
+.cab-side{width:246px;flex:none;background:var(--panel2);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:22px 16px}
+.cab-side .logo{padding:0 10px;margin-bottom:30px}
+.cab-nav{display:flex;flex-direction:column;gap:4px;flex:1}
+.cab-nav button{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:11px;font:600 14px var(--fb);color:var(--mut);transition:.2s;text-align:left;position:relative}
+.cab-nav button svg{width:18px;height:18px;flex:none}
+.cab-nav button:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.cab-nav button.active{background:var(--acc-soft);color:var(--acc)}
+.cab-nav button .cnt{margin-left:auto;background:var(--acc);color:#0B0F16;font:700 11px var(--fm);padding:2px 8px;border-radius:99px}
+.user-card{display:flex;gap:11px;align-items:center;padding:13px 10px;border-top:1px solid var(--line);margin-top:14px}
+.user-card img{width:40px;height:40px;border-radius:11px;object-fit:cover}
+.user-card b{font-size:14px;display:block;line-height:1.2}
+.user-card span{font:500 11px var(--fm);color:var(--acc)}
+.user-card .exit{margin-left:auto;color:var(--mut);width:32px;height:32px;display:grid;place-items:center;border-radius:8px;transition:.2s}
+.user-card .exit:hover{color:var(--red);background:rgba(255,93,93,.1)}
+.user-card .exit svg{width:16px;height:16px}
+.cab-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.cab-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:18px;padding:15px 30px;background:rgba(10,14,20,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+#btn-drawer{display:none;width:40px;height:40px;border:1px solid var(--line2);border-radius:10px;place-items:center}
+#btn-drawer svg{width:18px;height:18px}
+.cab-top h2{font:700 19px var(--fd)}
+.cab-date{font:500 12px var(--fm);color:var(--mut);text-transform:capitalize}
+.cab-top-right{margin-left:auto;display:flex;gap:12px;align-items:center}
+.cab-body{padding:30px;width:100%;max-width:1200px;margin:0 auto}
+.panel{display:none}
+.panel.on{display:block;animation:panelIn .4s ease}
+@keyframes panelIn{from{opacity:0;transform:translateY(12px)}}
+.greet{margin-bottom:26px}
+.greet h3{font:700 clamp(1.3rem,2.2vw,1.7rem) var(--fd)}
+.greet p{color:var(--mut);font-size:14px;margin-top:4px}
+
+.cards4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+.mini-card{background:var(--panel2);border:1px solid var(--line);border-radius:15px;padding:20px;transition:transform .25s,border-color .25s}
+.mini-card:hover{transform:translateY(-3px);border-color:var(--line2)}
+.mini-card small{font:600 10.5px var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.mini-card b{display:block;font:700 27px var(--fd);margin:9px 0 5px}
+.mini-card .delta{font:600 11px var(--fm);color:var(--ok)}
+.mini-card .delta.vio{color:var(--vio)}
+
+.ov-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:20px}
+.box{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:24px}
+.box-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.box-head b{font:700 15px var(--fd)}
+.box-head span{font:500 11px var(--fm);color:var(--mut)}
+.bars{display:flex;align-items:flex-end;gap:10px;height:180px}
+.cb{flex:1;display:flex;flex-direction:column;gap:9px;height:100%;justify-content:flex-end;align-items:center}
+.cb i{display:block;width:100%;max-width:38px;height:var(--h);border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,var(--acc),rgba(200,255,61,.35));transform:scaleY(0);transform-origin:bottom;transition:transform .8s cubic-bezier(.2,.7,.2,1);transition-delay:var(--d)}
+.cb.alt i{background:linear-gradient(180deg,var(--vio),rgba(143,123,255,.3))}
+.panel.on .cb i{transform:scaleY(1)}
+.cb span{font:600 10.5px var(--fm);color:var(--mut)}
+.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:18px}
+.wd{border:1px solid var(--line);border-radius:9px;padding:9px 4px;text-align:center;font:600 10px var(--fm);color:var(--mut)}
+.wd i{display:block;font-style:normal;font-size:13px;color:var(--text);margin-bottom:3px}
+.wd.today{border-color:var(--acc);color:var(--acc)}
+.wd .dots{display:flex;gap:3px;justify-content:center;margin-top:6px}
+.wd .dots b{width:5px;height:5px;border-radius:50%;background:var(--acc)}
+
+.q-item{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:15px 4px;border-bottom:1px solid var(--line);animation:panelIn .4s}
+.q-item:last-child{border:0}
+.q-nets{display:flex;gap:5px}
+.q-txt b{display:block;font-size:14.5px;font-weight:600}
+.q-txt small{font:500 11px var(--fm);color:var(--mut)}
+.st{font:600 10px var(--fm);letter-spacing:.1em;text-transform:uppercase;padding:6px 11px;border-radius:99px}
+.st-ok{background:rgba(61,220,151,.12);color:var(--ok)}
+.st-wait{background:rgba(255,255,255,.06);color:var(--mut)}
+.st-ing{background:var(--acc-soft);color:var(--acc)}
+.st-err{background:rgba(255,93,93,.12);color:var(--red)}
+
+/* composer */
+.comp-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:start}
+.net-chips{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:18px}
+.net-chip{display:inline-flex;align-items:center;gap:9px;padding:9px 15px 9px 10px;border:1px solid var(--line2);border-radius:11px;font:600 13px var(--fb);color:var(--mut);transition:.2s}
+.net-chip:hover{border-color:var(--acc)}
+.net-chip.on{border-color:var(--acc);background:var(--acc-soft);color:var(--text)}
+#post-text{width:100%;min-height:150px;resize:vertical;background:var(--bg2);border:1px solid var(--line2);border-radius:12px;padding:15px 16px;color:var(--text);font:500 15px/1.55 var(--fb)}
+#post-text:focus{outline:none;border-color:var(--acc)}
+.comp-meta{display:flex;justify-content:space-between;align-items:center;margin:9px 0 16px}
+#post-count{font:500 12px var(--fm);color:var(--mut)}
+.mode-seg{display:flex;gap:14px;margin-bottom:16px}
+.mode-seg label{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--mut);cursor:pointer}
+.mode-seg input{accent-color:var(--acc)}
+#post-time{background:var(--bg2);border:1px solid var(--line2);border-radius:11px;padding:11px 14px;color:var(--text);font:500 14px var(--fm);margin-bottom:18px;color-scheme:dark}
+.pv{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel2)}
+.pv-top{display:flex;gap:11px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
+.pv-top img{width:38px;height:38px;border-radius:50%}
+.pv-top b{font-size:14px;display:block}
+.pv-top small{font:500 11px var(--fm);color:var(--mut)}
+.pv-nets{margin-left:auto;display:flex;gap:5px}
+.pv-body{padding:16px 18px;font-size:14.5px;color:var(--mut);min-height:96px;white-space:pre-wrap}
+.pv-img{border-top:1px solid var(--line);aspect-ratio:2/1;object-fit:cover;width:100%}
+
+/* accounts */
+.acc-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:16px;align-items:center;padding:17px 6px;border-bottom:1px solid var(--line)}
+.acc-row:last-child{border:0}
+.acc-ava{width:44px;height:44px;border-radius:12px;object-fit:cover}
+.acc-row b{display:block;font-size:15px}
+.acc-row small{font:500 11.5px var(--fm);color:var(--mut)}
+.acc-subs{font:600 13px var(--fm);color:var(--mut);text-align:right}
+.acc-subs i{display:block;font-style:normal;font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.sw-wrap{display:flex;align-items:center;gap:10px}
+.sw-wrap em{font:600 10px var(--fm);letter-spacing:.08em;text-transform:uppercase;color:var(--acc);font-style:normal;width:64px;text-align:right}
+.sw-wrap em.off{color:var(--mut)}
+.sw{position:relative;width:44px;height:24px;flex:none;cursor:pointer}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw i{position:absolute;inset:0;border-radius:99px;background:rgba(255,255,255,.12);border:1px solid var(--line2);transition:.25s}
+.sw i::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.25s}
+.sw input:checked+i{background:var(--acc);border-color:var(--acc)}
+.sw input:checked+i::after{transform:translateX(20px);background:#0B0F16}
+
+/* analytics breakdown */
+.bd-row{margin-bottom:18px}
+.bd-row header{display:flex;justify-content:space-between;font:600 12px var(--fm);color:var(--mut);margin-bottom:8px}
+.bd-row header b{color:var(--text)}
+.bd-bar{height:7px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden}
+.bd-bar i{display:block;height:100%;width:var(--w);border-radius:5px;transform:scaleX(0);transform-origin:left;transition:transform .9s ease var(--d)}
+.panel.on .bd-bar i{transform:scaleX(1)}
+
+/* bottom nav (mobile) */
+.bnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(12,17,26,.97);border-top:1px solid var(--line);justify-content:space-around;padding:8px 6px calc(8px + env(safe-area-inset-bottom))}
+.bnav button{display:flex;flex-direction:column;align-items:center;gap:4px;font:600 10px var(--fb);color:var(--mut);padding:6px 10px;border-radius:10px}
+.bnav button svg{width:19px;height:19px}
+.bnav button.active{color:var(--acc)}
+
+/* drawer */
+.drawer{position:fixed;inset:0;z-index:80}
+.d-ov{position:absolute;inset:0;background:rgba(5,8,13,.7)}
+.drawer .cab-side{position:absolute;left:0;top:0;bottom:0;z-index:2;transform:translateX(-105%);transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+.drawer.on .cab-side{transform:none}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:1080px){
+  .hero-grid{grid-template-columns:1fr;gap:60px}
+  .console{max-width:620px}
+  .feat-grid{grid-template-columns:1fr;gap:34px}
+  .feat-left{position:static}
+  .about-grid{grid-template-columns:1fr;gap:44px}
+  .about-img{max-width:560px}
+  .plans{grid-template-columns:1fr;max-width:520px;margin:0 auto}
+  .promo-grid{grid-template-columns:1fr;gap:30px}
+  .foot-grid{grid-template-columns:1fr 1fr}
+  .ov-grid,.comp-grid{grid-template-columns:1fr}
+  .cards4{grid-template-columns:repeat(2,1fr)}
+  .hdr nav{display:none}
+  #burger{display:grid}
+  .hdr-clock{display:none}
+}
+@media(max-width:760px){
+  section{padding:68px 0}
+  .hero{padding:120px 0 56px}
+  .feat-item{grid-template-columns:1fr;gap:22px;padding:30px 6px}
+  .mock{max-width:380px}
+  .stats{grid-template-columns:1fr}
+  .coupon{padding:40px 26px}
+  .promo-form{flex-direction:column}
+  .float-chip{display:none}
+  .orbit{display:none}
+  .foot-grid{grid-template-columns:1fr;gap:30px}
+  /* cabinet mobile */
+  body.cabinet-mode #view-cabinet{display:block}
+  .cab-side{display:none}
+  .drawer .cab-side{display:flex;width:280px}
+  #btn-drawer{display:grid}
+  .bnav{display:flex}
+  .cab-body{padding:20px 16px 100px}
+  .cab-top{padding:13px 16px}
+  .cab-date{display:none}
+  .cards4{grid-template-columns:1fr 1fr;gap:12px}
+  .acc-row{grid-template-columns:auto 1fr auto;grid-template-areas:"ava info sw" "ava subs sw"}
+  .acc-row .acc-ava{grid-area:ava}.acc-row .acc-info{grid-area:info}.acc-subs{grid-area:subs;text-align:left}.sw-wrap{grid-area:sw;flex-direction:column}
+  .acc-subs i{display:inline}
+  .sw-wrap em{display:none}
+  .q-item{grid-template-columns:auto 1fr;}
+  .q-item .st{grid-column:2;justify-self:start}
+}
+@media(max-width:440px){
+  .hero h1{font-size:2rem}
+  .hero-cta .btn{width:100%}
+  .plan{padding:26px 22px}
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .rv{opacity:1;transform:none}
+  .hero h1 span i{transform:none}
+  .mtrack{animation:none;width:auto;flex-wrap:wrap}
+  .panel.on .cb i,.cb i{transform:scaleY(1)}
+  .bd-bar i{transform:scaleX(1)}
+  .feed-line{opacity:1}
+}
+</style>
+</head>
+<body>
+
+<!-- SVG SPRITE -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2c.8 5.5 4.5 9.2 10 10-5.5.8-9.2 4.5-10 10-.8-5.5-4.5-9.2-10-10 5.5-.8 9.2-4.5 10-10Z" fill="currentColor"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5M16 4.6a3.5 3.5 0 0 1 0 6.8M17.5 15.2c2 .6 3.5 2.2 4 4.8"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V11M10 20V4M16 20v-6M22 20H2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-burger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="currentColor"/></symbol>
+  <symbol id="i-rss" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5.5" cy="18.5" r="1.8" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5L10 9.5Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="8" width="18" height="4"/><path d="M5 12v8h14v-8M12 8v12M12 8s-4.5.2-5-2.4C6.6 3.5 11 3.6 12 8Zm0 0s4.5.2 5-2.4C17.4 3.5 13 3.6 12 8Z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5"/></symbol>
+</svg>
+
+<!-- ==================== LANDING ==================== -->
+<div id="view-landing">
+
+<header class="hdr">
+  <div class="hdr-in">
+    <a class="logo" href="#top">
+      <span class="logo-mark"><svg><use href="#i-spark"/></svg></span>
+      <span>ASP<small>автопостинг</small></span>
+    </a>
+    <nav>
+      <a href="#features">Возможности</a>
+      <a href="#about">Сервис</a>
+      <a href="#pricing">Тарифы</a>
+      <a href="#promo">Акция</a>
+    </nav>
+    <div class="hdr-right">
+      <span class="hdr-clock mono"><i></i><span class="js-clock">00:00:00</span></span>
+      <button class="btn btn-g btn-sm" id="btn-auth">Войти</button>
+      <button class="btn btn-p btn-sm" id="btn-cabinet-top" hidden>Личный кабинет</button>
+      <button id="burger" aria-label="Меню"><svg><use href="#i-burger"/></svg></button>
+    </div>
+  </div>
+</header>
+<div class="mmenu" id="mmenu">
+  <a href="#features">Возможности</a>
+  <a href="#about">Сервис</a>
+  <a href="#pricing">Тарифы</a>
+  <a href="#promo">Акция</a>
+  <a href="#" data-auth>Вход / регистрация</a>
+</div>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <span class="eyebrow" data-scramble>ASP · сервис автопостинга</span>
+        <h1>
+          <span><i style="--d:.05s">Постинг сам</i></span>
+          <span><i style="--d:.15s">публикует</i></span>
+          <span><i style="--d:.25s"><em>по расписанию.</em></i></span>
+        </h1>
+        <p class="hero-sub">Разместим по расписанию ваши записи в соцсетях: <b>сразу же</b> или <b>в указанное вами время</b>. Вы планируете контент на неделю — ASP публикует без вашего участия.</p>
+        <div class="hero-cta">
+          <button class="btn btn-p" data-lead><svg><use href="#i-zap"/></svg>Начать бесплатно</button>
+          <a class="btn btn-g" href="#pricing">Тарифы</a>
+        </div>
+        <div class="hero-note">
+          <span><svg><use href="#i-check"/></svg>Бесплатный тариф навсегда</span>
+          <span><svg><use href="#i-check"/></svg>Запуск за 2 минуты</span>
+          <span><svg><use href="#i-check"/></svg>Без карты</span>
+        </div>
+      </div>
+
+      <div class="console-wrap">
+        <div class="orbit"></div>
+        <div class="float-chip fc1">+128 подписчиков за неделю</div>
+        <div class="float-chip fc2">⏱ 12 ч сэкономлено</div>
+        <div class="console">
+          <div class="con-head"><span class="dot"></span> Очередь публикации · <span class="js-clock">00:00:00</span></div>
+
+          <div class="con-item" data-st="pub">
+            <span class="nchip n-tg">TG</span>
+            <div class="con-txt"><b>Утренний дайджест #124</b><small>Telegram · 09:00</small></div>
+            <div class="con-st">Опубликовано</div>
+            <div class="bar"><i style="width:100%"></i></div>
+          </div>
+          <div class="con-item" data-st="ing">
+            <span class="nchip n-vk">VK</span>
+            <div class="con-txt"><b>Новинки каталога 🔥</b><small>ВКонтакте · 12:30</small></div>
+            <div class="con-st">Публикуем…</div>
+            <div class="bar"><i style="width:46%"></i></div>
+          </div>
+          <div class="con-item" data-st="plan">
+            <span class="nchip n-yt">YT</span>
+            <div class="con-txt"><b>Shorts: бэкстейдж съёмки</b><small>YouTube · 18:00</small></div>
+            <div class="con-st">Отложено</div>
+            <div class="bar"><i></i></div>
+          </div>
+          <div class="con-item" data-st="plan">
+            <span class="nchip n-ok">OK</span>
+            <div class="con-txt"><b>Подборка подкастов недели</b><small>Одноклассники · 21:15</small></div>
+            <div class="con-st">Отложено</div>
+            <div class="bar"><i></i></div>
+          </div>
+
+          <div class="con-foot">
+            <span class="pill pill-acc">5 сетей подключено</span>
+            <span class="pill pill-dim">1 247 постов за месяц</span>
+          </div>
+        </div>
+        <div class="tl">
+          <span class="now">Сейчас</span><span>18:00</span><span>21:15</span><span>Завтра 09:00</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <div class="marquee"><div class="mtrack">
+    <span>Telegram <b>✦</b> ВКонтакте <b>✦</b> YouTube <b>✦</b> Одноклассники <b>✦</b> Дзен <b>✦</b> Постинг по расписанию <b>✦</b> Импорт с сайта <b>✦</b> Видео без лимитов <b>✦</b></span>
+    <span>Telegram <b>✦</b> ВКонтакте <b>✦</b> YouTube <b>✦</b> Одноклассники <b>✦</b> Дзен <b>✦</b> Постинг по расписанию <b>✦</b> Импорт с сайта <b>✦</b> Видео без лимитов <b>✦</b></span>
+  </div></div>
+  <div class="marquee rev"><div class="mtrack">
+    <span>Экономьте 12 часов в месяц <b>✦</b> Один кабинет — все соцсети <b>✦</b> Публикация точно в срок <b>✦</b> Рассылки и видео <b>✦</b></span>
+    <span>Экономьте 12 часов в месяц <b>✦</b> Один кабинет — все соцсети <b>✦</b> Публикация точно в срок <b>✦</b> Рассылки и видео <b>✦</b></span>
+  </div></div>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="container feat-grid">
+      <div class="feat-left rv">
+        <span class="eyebrow">Возможности системы</span>
+        <h2 class="sec-title">Всё, чтобы контент летал сам</h2>
+        <p>Три механики, которые закрывают рутину блогера, SMM-менеджера и контент-команды. Настроили один раз — дальше работает само.</p>
+        <button class="btn btn-g" data-lead>Попробовать бесплатно</button>
+      </div>
+      <div>
+        <article class="feat-item rv">
+          <div>
+            <span class="feat-num">01 / Публикация</span>
+            <h3>Отложенная публикация</h3>
+            <p>Создайте запись, и сервис опубликует её во все социальные сети — сразу же или в указанное вами время. Хоть на месяц вперёд.</p>
+            <div class="feat-tags"><span class="pill pill-dim">точно в срок</span><span class="pill pill-dim">все сети сразу</span></div>
+          </div>
+          <div class="mock">
+            <div class="mock-row w80"></div><div class="mock-row w60"></div>
+            <div class="mock-time"><svg><use href="#i-clock"/></svg>Сегодня, 18:00</div>
+            <div class="mock-nets"><span class="nchip n-tg">TG</span><span class="nchip n-vk">VK</span><span class="nchip n-yt">YT</span><span class="nchip n-dz">ДЗ</span></div>
+          </div>
+        </article>
+
+        <article class="feat-item rv" style="--d:.08s">
+          <div>
+            <span class="feat-num">02 / Импорт</span>
+            <h3>Импорт записей с сайта</h3>
+            <p>Делитесь записями с вашего сайта — по мере их появления на сайте или по расписанию. RSS подключается в два клика.</p>
+            <div class="feat-tags"><span class="pill pill-dim">RSS / sitemap</span><span class="pill pill-dim">автопилот</span></div>
+          </div>
+          <div class="mock">
+            <div class="feed-line" style="--d:0s"><i></i><b>blog.ru/novaya-statya-o-kontente</b></div>
+            <div class="feed-line" style="--d:2s"><i></i><b>blog.ru/kejs-oxvat-x3</b></div>
+            <div class="feed-line" style="--d:4s"><i></i><b>blog.ru/gid-po-shortam</b></div>
+            <div class="mock-note">→ автоматически уходит в очередь ASP</div>
+          </div>
+        </article>
+
+        <article class="feat-item rv" style="--d:.16s">
+          <div>
+            <span class="feat-num">03 / Видео</span>
+            <h3>Импорт видео</h3>
+            <p>Делитесь видеофайлами с любого хостинга без учёта трафика. Работает и для рассылки — грузите ссылку, остальное сделает сервис.</p>
+            <div class="feat-tags"><span class="pill pill-dim">любой хостинг</span><span class="pill pill-dim">0 ₽ за трафик</span></div>
+          </div>
+          <div class="mock">
+            <div class="mock-video">
+              <img src="https://picsum.photos/seed/asp-video-frame/560/315" alt="Видео">
+              <span class="play-tri"></span>
+            </div>
+            <div class="vprog"><i></i></div>
+            <div class="mock-note">backstage_final.mp4 · загрузка 74%</div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="about">
+    <div class="container">
+      <div class="about-grid">
+        <div class="rv">
+          <span class="eyebrow">Зачем это вам</span>
+          <h2 class="sec-title">Получите больше подписчиков</h2>
+          <p class="sec-sub">Используйте богатые возможности сервиса, чтобы ASP подстроился под ваши задачи и цели — а вы получите гораздо больше подписчиков во всех соцсетях. Регулярный постинг в лучшее время = стабильный рост охватов.</p>
+          <button class="btn btn-p" data-lead>Начать бесплатно<svg><use href="#i-zap"/></svg></button>
+        </div>
+        <div class="about-img rv" style="--d:.12s">
+          <img src="https://picsum.photos/seed/asp-content-creator/900/760" alt="Рабочее место контент-мейкера">
+          <span class="float-chip fc1" style="top:18px;left:18px">📈 охваты ×3</span>
+          <span class="float-chip fc2" style="bottom:18px;right:18px;left:auto">постинг без рук</span>
+        </div>
+      </div>
+      <div class="stats rv">
+        <div class="stat"><b data-n="2400000" data-suf="+">0</b><span>записей опубликовано через ASP</span></div>
+        <div class="stat"><b data-n="96" data-suf="%">0</b><span>публикаций выходят точно в срок</span></div>
+        <div class="stat"><b data-n="12" data-suf=" ч">0</b><span>экономит один пользователь в месяц</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="pricing">
+    <div class="container">
+      <div class="price-head rv">
+        <div>
+          <span class="eyebrow">Тарифные планы</span>
+          <h2 class="sec-title">Честные цены. Старт — бесплатно</h2>
+        </div>
+        <div class="seg">
+          <button class="seg-btn on" data-mode="m">Месяц</button>
+          <button class="seg-btn" data-mode="y">Год <span style="opacity:.7">−17%</span></button>
+        </div>
+      </div>
+      <div class="plans">
+        <div class="plan rv">
+          <div class="plan-name">Старт</div>
+          <div class="plan-price"><b data-m="0" data-y="0">0</b><span class="per">у.е. / мес</span></div>
+          <div class="plan-save">навсегда бесплатно</div>
+          <ul>
+            <li><svg><use href="#i-check"/></svg>1 соцсеть</li>
+            <li><svg><use href="#i-check"/></svg>50 постов в месяц</li>
+            <li><svg><use href="#i-check"/></svg>Отложенная публикация</li>
+            <li><svg><use href="#i-check"/></svg>Базовая статистика</li>
+          </ul>
+          <button class="btn btn-g btn-block" data-lead>Начать бесплатно</button>
+        </div>
+
+        <div class="plan rv" style="--d:.1s">
+          <div class="plan-name">Стандарт <span class="pill pill-acc" style="margin-left:auto">выбор смм</span></div>
+          <div class="plan-price"><b data-m="24" data-y="240">24</b><span class="per">у.е. / мес</span></div>
+          <div class="plan-save js-save"></div>
+          <ul>
+            <li><svg><use href="#i-check"/></svg>5 соцсетей</li>
+            <li><svg><use href="#i-check"/></svg>1 500 постов в месяц</li>
+            <li><svg><use href="#i-check"/></svg>Импорт записей с сайта</li>
+            <li><svg><use href="#i-check"/></svg>Импорт видео без учёта трафика</li>
+          </ul>
+          <button class="btn btn-g btn-block" data-lead>Выбрать Стандарт</button>
+        </div>
+
+        <div class="plan pro rv" style="--d:.2s">
+          <span class="plan-badge">максимум</span>
+          <div class="plan-name">Профи</div>
+          <div class="plan-price"><b data-m="56" data-y="560">56</b><span class="per">у.е. / мес</span></div>
+          <div class="plan-save js-save"></div>
+          <ul>
+            <li><svg><use href="#i-check"/></svg>10 соцсетей</li>
+            <li><svg><use href="#i-check"/></svg>Неограниченное число постов</li>
+            <li><svg><use href="#i-check"/></svg>Всё из тарифа «Стандарт»</li>
+            <li><svg><use href="#i-check"/></svg>Приоритетная очередь публикации</li>
+            <li><svg><use href="#i-check"/></svg>Поддержка в течение часа</li>
+          </ul>
+          <button class="btn btn-p btn-block" data-lead>Выбрать Профи</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROMO -->
+  <section id="promo" class="promo">
+    <div class="container">
+      <div class="coupon rv">
+        <div class="promo-grid">
+          <div>
+            <span class="eyebrow"><svg style="width:14px;height:14px"><use href="#i-gift"/></svg>&nbsp;Акция для новых</span>
+            <h2>Месяц тарифа <em>«Профи»</em> — бесплатно</h2>
+            <p>Введите вашу почту и получите месяц бесплатного использования тарифа «Профи». Все 10 соцсетей и безлимит постов — сразу.</p>
+          </div>
+          <div>
+            <form class="promo-form" id="promo-form" novalidate>
+              <input type="email" id="promo-email" placeholder="you@example.com" aria-label="Ваша почта">
+              <button class="btn btn-p" type="submit">Получить месяц</button>
+            </form>
+            <div class="promo-timer"><svg><use href="#i-clock"/></svg>Акция сгорит через <b id="promo-timer">47:59:12</b></div>
+            <div class="promo-fine">Никакого спама. Отписка в один клик.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <div class="foot-grid">
+      <div>
+        <a class="logo" href="#top"><span class="logo-mark"><svg><use href="#i-spark"/></svg></span><span>ASP<small>автопостинг</small></span></a>
+        <p>Сервис автоматического постинга в соцсетях. Планируйте контент — мы опубликуем его точно в срок.</p>
+      </div>
+      <div class="foot-col">
+        <b>Разделы</b>
+        <a href="#features">Возможности</a>
+        <a href="#about">О сервисе</a>
+        <a href="#pricing">Тарифы</a>
+        <a href="#promo">Акция</a>
+      </div>
+      <div class="foot-col">
+        <b>Аккаунт</b>
+        <button data-auth>Авторизация</button>
+        <button data-lead>Регистрация</button>
+        <button id="foot-cabinet">Личный кабинет</button>
+      </div>
+      <div class="foot-col">
+        <b>Контакты</b>
+        <a href="mailto:hello@asp.io">hello@asp.io</a>
+        <a href="#">Поддержка 24/7</a>
+        <a href="#">База знаний</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="year">2026</span> ASP · Все права защищены</span>
+      <span>Политика конфиденциальности · Оферта</span>
+    </div>
+  </div>
+</footer>
+</div><!-- /view-landing -->
+
+<!-- ==================== CABINET ==================== -->
+<div id="view-cabinet">
+  <aside class="cab-side">
+    <a class="logo" href="#"><span class="logo-mark"><svg><use href="#i-spark"/></svg></span><span>ASP<small>кабинет</small></span></a>
+    <div class="cab-nav">
+      <button class="active" data-go="overview"><svg><use href="#i-home"/></svg>Обзор</button>
+      <button data-go="create"><svg><use href="#i-plus"/></svg>Создать пост</button>
+      <button data-go="schedule"><svg><use href="#i-cal"/></svg>Расписание <span class="cnt" id="q-count">2</span></button>
+      <button data-go="accounts"><svg><use href="#i-users"/></svg>Аккаунты</button>
+      <button data-go="analytics"><svg><use href="#i-chart"/></svg>Аналитика</button>
+    </div>
+    <div class="user-card">
+      <img src="https://picsum.photos/seed/asp-smm-avatar/96/96" alt="Аватар">
+      <div><b id="user-name">Александра Ким</b><span>тариф · Профи</span></div>
+      <button class="exit" id="exit-btn" title="Выйти на сайт"><svg><use href="#i-out"/></svg></button>
+    </div>
+  </aside>
+
+  <div class="cab-main">
+    <div class="cab-top">
+      <button id="btn-drawer" aria-label="Меню"><svg><use href="#i-burger"/></svg></button>
+      <h2 id="cab-title">Обзор</h2>
+      <span class="cab-date" id="cab-date"></span>
+      <div class="cab-top-right">
+        <button class="btn btn-p btn-sm" data-go="create"><svg><use href="#i-plus"/></svg>Новый пост</button>
+      </div>
+    </div>
+
+    <div class="cab-body">
+
+      <!-- OVERVIEW -->
+      <div class="panel on" data-panel="overview">
+        <div class="greet">
+          <h3>Привет, <span id="greet-name">Александра</span> 👋</h3>
+          <p>Сегодня суббота — лучшее время для контент-плана на неделю. Вот что происходит с вашими аккаунтами.</p>
+        </div>
+        <div class="cards4">
+          <div class="mini-card"><small>Опубликовано сегодня</small><b id="pub-count">8</b><span class="delta">▲ +2 к утру</span></div>
+          <div class="mini-card"><small>В очереди</small><b id="q-count2">2</b><span class="delta vio">ближайшая в 18:00</span></div>
+          <div class="mini-card"><small>Подключено сетей</small><b>5 / 10</b><span class="delta">лимит тарифа Профи</span></div>
+          <div class="mini-card"><small>Сэкономлено за месяц</small><b>12,5 ч</b><span class="delta">▲ +1,2 ч</span></div>
+        </div>
+        <div class="ov-grid">
+          <div class="box">
+            <div class="box-head"><b>Публикации за неделю</b><span>шт / день</span></div>
+            <div class="bars">
+              <div class="cb" style="--h:38%;--d:.0s"><i></i><span>пн</span></div>
+              <div class="cb" style="--h:62%;--d:.06s"><i></i><span>вт</span></div>
+              <div class="cb" style="--h:46%;--d:.12s"><i></i><span>ср</span></div>
+              <div class="cb" style="--h:78%;--d:.18s"><i></i><span>чт</span></div>
+              <div class="cb alt" style="--h:54%;--d:.24s"><i></i><span>пт</span></div>
+              <div class="cb" style="--h:88%;--d:.3s"><i></i><span>сб</span></div>
+              <div class="cb" style="--h:30%;--d:.36s"><i></i><span>вс</span></div>
+            </div>
+          </div>
+          <div class="box">
+            <div class="box-head"><b>Неделя</b><span>сентябрь</span></div>
+            <div class="week-strip">
+              <div class="wd"><i>31</i>пн<span class="dots"><b></b><b></b></span></div>
+              <div class="wd"><i>1</i>вт<span class="dots"><b></b><b></b><b></b></span></div>
+              <div class="wd"><i>2</i>ср<span class="dots"><b></b></span></div>
+              <div class="wd"><i>3</i>чт<span class="dots"><b></b><b></b><b></b></span></div>
+              <div class="wd"><i>4</i>пт<span class="dots"><b></b><b></b></span></div>
+              <div class="wd today"><i>5</i>сб<span class="dots"><b></b><b></b><b></b></span></div>
+              <div class="wd"><i>6</i>вс<span class="dots"><b></b></span></div>
+            </div>
+            <div class="box-head" style="margin:26px 0 6px"><b>Ближайшие</b></div>
+            <div id="ov-queue"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CREATE -->
+      <div class="panel" data-panel="create">
+        <div class="comp-grid">
+          <div class="box">
+            <div class="box-head"><b>Новая запись</b><span>черновик</span></div>
+            <label style="display:block;font:600 11px var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:10px">Куда публикуем</label>
+            <div class="net-chips">
+              <button class="net-chip on" data-net="tg"><span class="nchip n-tg">TG</span>Telegram</button>
+              <button class="net-chip on" data-net="vk"><span class="nchip n-vk">VK</span>ВКонтакте</button>
+              <button class="net-chip" data-net="yt"><span class="nchip n-yt">YT</span>YouTube</button>
+              <button class="net-chip" data-net="ok"><span class="nchip n-ok">OK</span>Одноклассники</button>
+              <button class="net-chip" data-net="dz"><span class="nchip n-dz">ДЗ</span>Дзен</button>
+            </div>
+            <form id="post-form" novalidate>
+              <textarea id="post-text" placeholder="Текст записи… Например: «Новый выпуск уже на канале 🎬»"></textarea>
+              <div class="comp-meta"><span id="post-count">0 / 4096</span></div>
+              <div class="mode-seg">
+                <label><input type="radio" name="mode" value="now" checked> Опубликовать сейчас</label>
+                <label><input type="radio" name="mode" value="later"> Запланировать</label>
+              </div>
+              <input type="datetime-local" id="post-time" hidden>
+              <button class="btn btn-p btn-block" type="submit" id="post-submit">Опубликовать сейчас</button>
+            </form>
+          </div>
+          <div>
+            <div class="pv">
+              <div class="pv-top">
+                <img src="https://picsum.photos/seed/asp-brand-avatar/80/80" alt="">
+                <div><b>Brand Voice</b><small id="pv-time">сейчас</small></div>
+                <div class="pv-nets" id="pv-nets"></div>
+              </div>
+              <div class="pv-body" id="pv-text">Текст записи появится здесь — начните печатать слева…</div>
+              <img class="pv-img" src="https://picsum.photos/seed/asp-post-cover/640/320" alt="Обложка поста">
+            </div>
+            <p style="font:500 12px var(--fm);color:var(--mut);margin-top:12px">Предпросмотр · так запись увидят подписчики</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCHEDULE -->
+      <div class="panel" data-panel="schedule">
+        <div class="box">
+          <div class="box-head"><b>Очередь публикаций</b><span id="q-total"></span></div>
+          <div id="queue-list"></div>
+        </div>
+      </div>
+
+      <!-- ACCOUNTS -->
+      <div class="panel" data-panel="accounts">
+        <div class="box">
+          <div class="box-head"><b>Подключённые аккаунты</b><span>5 из 10</span></div>
+          <div class="acc-row">
+            <img class="acc-ava" src="https://picsum.photos/seed/asp-acc-tg/88/88" alt="">
+            <div class="acc-info"><b>Brand Voice</b><small>@brandvoice · Telegram</small></div>
+            <div class="acc-subs">12 480 <i>подписчиков</i></div>
+            <div class="sw-wrap"><em>Активен</em><label class="sw"><input type="checkbox" checked><i></i></label></div>
+          </div>
+          <div class="acc-row">
+            <img class="acc-ava" src="https://picsum.photos/seed/asp-acc-vk/88/88" alt="">
+            <div class="acc-info"><b>Brand Voice</b><small>vk.com/brandvoice · ВКонтакте</small></div>
+            <div class="acc-subs">8 904 <i>подписчиков</i></div>
+            <div class="sw-wrap"><em>Активен</em><label class="sw"><input type="checkbox" checked><i></i></label></div>
+          </div>
+          <div class="acc-row">
+            <img class="acc-ava" src="https://picsum.photos/seed/asp-acc-yt/88/88" alt="">
+            <div class="acc-info"><b>BrandVoice Studio</b><small>YouTube · канал</small></div>
+            <div class="acc-subs">3 120 <i>подписчиков</i></div>
+            <div class="sw-wrap"><em>Активен</em><label class="sw"><input type="checkbox" checked><i></i></label></div>
+          </div>
+          <div class="acc-row">
+            <img class="acc-ava" src="https://picsum.photos/seed/asp-acc-ok/88/88" alt="">
+            <div class="acc-info"><b>Голос бренда</b><small>Одноклассники · группа</small></div>
+            <div class="acc-subs">1 517 <i>подписчиков</i></div>
+            <div class="sw-wrap"><em class="off">Пауза</em><label class="sw"><input type="checkbox"><i></i></label></div>
+          </div>
+          <div class="acc-row">
+            <img class="acc-ava" src="https://picsum.photos/seed/asp-acc-dzen/88/88" alt="">
+            <div class="acc-info"><b>Brand Voice · Дзен</b><small>dzen.ru/brandvoice</small></div>
+            <div class="acc-subs">2 300 <i>читателей</i></div>
+            <div class="sw-wrap"><em>Активен</em><label class="sw"><input type="checkbox" checked><i></i></label></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="panel" data-panel="analytics">
+        <div class="cards4">
+          <div class="mini-card"><small>Охват за месяц</small><b>214 300</b><span class="delta">▲ +18%</span></div>
+          <div class="mini-card"><small>Новых подписчиков</small><b>+1 284</b><span class="delta">▲ +9%</span></div>
+          <div class="mini-card"><small>Постов опубликовано</small><b>1 247</b><span class="delta vio">план 1 500</span></div>
+          <div class="mini-card"><small>Лучшее время</small><b>18:00</b><span class="delta">пик вовлечённости</span></div>
+        </div>
+        <div class="ov-grid">
+          <div class="box">
+            <div class="box-head"><b>Динамика охвата</b><span>последние 7 дней</span></div>
+            <div class="bars">
+              <div class="cb" style="--h:30%;--d:.0s"><i></i><span>30</span></div>
+              <div class="cb" style="--h:44%;--d:.06s"><i></i><span>31</span></div>
+              <div class="cb" style="--h:40%;--d:.12s"><i></i><span>1</span></div>
+              <div class="cb" style="--h:58%;--d:.18s"><i></i><span>2</span></div>
+              <div class="cb alt" style="--h:50%;--d:.24s"><i></i><span>3</span></div>
+              <div class="cb" style="--h:74%;--d:.3s"><i></i><span>4</span></div>
+              <div class="cb" style="--h:92%;--d:.36s"><i></i><span>5</span></div>
+            </div>
+          </div>
+          <div class="box">
+            <div class="box-head"><b>Вклад соцсетей</b><span>охват</span></div>
+            <div class="bd-row"><header><span>Telegram</span><b>38%</b></header><div class="bd-bar"><i style="--w:38%;--d:.05s;background:#33B7F0"></i></div></div>
+            <div class="bd-row"><header><span>ВКонтакте</span><b>27%</b></header><div class="bd-bar"><i style="--w:27%;--d:.15s;background:#5D9CF5"></i></div></div>
+            <div class="bd-row"><header><span>YouTube</span><b>19%</b></header><div class="bd-bar"><i style="--w:19%;--d:.25s;background:#FF6B5E"></i></div></div>
+            <div class="bd-row"><header><span>Дзен</span><b>10%</b></header><div class="bd-bar"><i style="--w:10%;--d:.35s;background:#C9CFDA"></i></div></div>
+            <div class="bd-row"><header><span>Одноклассники</span><b>6%</b></header><div class="bd-bar"><i style="--w:6%;--d:.45s;background:#FFAA5C"></i></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <nav class="bnav">
+    <button class="active" data-go="overview"><svg><use href="#i-home"/></svg>Обзор</button>
+    <button data-go="create"><svg><use href="#i-plus"/></svg>Пост</button>
+    <button data-go="schedule"><svg><use href="#i-cal"/></svg>Расписание</button>
+    <button data-go="accounts"><svg><use href="#i-users"/></svg>Аккаунты</button>
+    <button data-go="analytics"><svg><use href="#i-chart"/></svg>Аналитика</button>
+  </nav>
+</div>
+
+<!-- mobile drawer -->
+<div class="drawer" id="drawer" hidden>
+  <div class="d-ov"></div>
+  <aside class="cab-side">
+    <a class="logo" href="#"><span class="logo-mark"><svg><use href="#i-spark"/></svg></span><span>ASP<small>кабинет</small></span></a>
+    <div class="cab-nav">
+      <button class="active" data-go="overview"><svg><use href="#i-home"/></svg>Обзор</button>
+      <button data-go="create"><svg><use href="#i-plus"/></svg>Создать пост</button>
+      <button data-go="schedule"><svg><use href="#i-cal"/></svg>Расписание</button>
+      <button data-go="accounts"><svg><use href="#i-users"/></svg>Аккаунты</button>
+      <button data-go="analytics"><svg><use href="#i-chart"/></svg>Аналитика</button>
+    </div>
+    <div class="user-card">
+      <img src="https://picsum.photos/seed/asp-smm-avatar/96/96" alt="">
+      <div><b class="js-uname">Александра Ким</b><span>тариф · Профи</span></div>
+      <button class="exit js-exit"><svg><use href="#i-out"/></svg></button>
+    </div>
+  </aside>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+<div class="overlay" id="overlay" hidden>
+
+  <div class="modal" id="m-lead" hidden>
+    <button class="m-close" data-close><svg><use href="#i-x"/></svg></button>
+    <h3>Начните бесплатно</h3>
+    <p class="m-sub">Оставьте контакты — откроем доступ и поможем подключить первую соцсеть.</p>
+    <form id="lead-form" novalidate>
+      <div class="field"><label for="f-name">Имя</label><input id="f-name" placeholder="Как к вам обращаться?" autocomplete="name"></div>
+      <div class="field"><label for="f-email">Почта</label><input id="f-email" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="form-err" id="lead-err">Проверьте имя и почту — где-то закралась ошибка.</div>
+      <button class="btn btn-p btn-block" type="submit">Начать постить<svg><use href="#i-zap"/></svg></button>
+    </form>
+  </div>
+
+  <div class="modal" id="m-thanks" hidden>
+    <button class="m-close" data-close><svg><use href="#i-x"/></svg></button>
+    <div class="thanks-check"><svg><use href="#i-check"/></svg></div>
+    <h3 id="th-title">Заявка принята!</h3>
+    <p class="m-sub" id="th-body">Уже отправляем письмо с доступом. Проверьте почту через пару минут.</p>
+    <button class="btn btn-p btn-block" data-close>Отлично</button>
+  </div>
+
+  <div class="modal" id="m-auth" hidden>
+    <button class="m-close" data-close><svg><use href="#i-x"/></svg></button>
+    <h3>Вход в ASP</h3>
+    <p class="m-sub">Управляйте постингом из одного окна.</p>
+    <div class="auth-tabs">
+      <button class="auth-tab on" data-tab="login">Вход</button>
+      <button class="auth-tab" data-tab="reg">Регистрация</button>
+    </div>
+    <div class="soc-row">
+      <button class="soc-btn" data-soc="Telegram"><span class="soc-ic" style="background:#33B7F0">TG</span>Telegram</button>
+      <button class="soc-btn" data-soc="ВКонтакте"><span class="soc-ic" style="background:#5D9CF5">VK</span>VK</button>
+      <button class="soc-btn" data-soc="Google"><span class="soc-ic" style="background:#E8ECF4">G</span>Google</button>
+    </div>
+    <div class="divider">или по почте</div>
+    <form id="auth-form" novalidate>
+      <div class="field" id="reg-name-wrap" hidden><label for="a-name">Имя</label><input id="a-name" placeholder="Александра"></div>
+      <div class="field"><label for="a-email">Почта</label><input id="a-email" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label for="a-pass">Пароль</label><input id="a-pass" type="password" placeholder="••••••••"></div>
+      <button class="btn btn-p btn-block" type="submit" id="auth-submit">Войти</button>
+    </form>
+    <div class="auth-msg" id="auth-msg"></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+let authed=false, userName='Александра Ким';
+
+/* ---------- toast ---------- */
+function toast(msg,type='ok'){
+  const t=document.createElement('div');t.className='toast'+(type==='err'?' err':'');
+  t.innerHTML=`<svg><use href="#${type==='err'?'i-x':'i-check'}"/></svg><span>${msg}</span>`;
+  $('#toasts').appendChild(t);
+  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),380)},3400);
+}
+
+/* ---------- clocks ---------- */
+function tickClock(){const s=new Date().toLocaleTimeString('ru-RU');$$('.js-clock').forEach(e=>e.textContent=s)}
+tickClock();setInterval(tickClock,1000);
+$('#cab-date').textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+$('#year').textContent=new Date().getFullYear();
+
+/* ---------- promo countdown ---------- */
+const promoEnd=Date.now()+(47*3600+59*60+12)*1000;
+setInterval(()=>{
+  let d=Math.max(0,promoEnd-Date.now())/1000|0;
+  const p=n=>String(n).padStart(2,'0');
+  $('#promo-timer').textContent=`${p(d/3600|0)}:${p(d/60%60|0)}:${p(d%60)}`;
+},1000);
+
+/* ---------- reveal / counters / scramble ---------- */
+function scramble(el){
+  const txt=el.dataset.text||el.textContent;el.dataset.text=txt;
+  const chars='#%&@01▮▯/';let i=0;
+  const iv=setInterval(()=>{
+    el.textContent=txt.slice(0,i)+[...txt.slice(i)].map(()=>chars[Math.random()*chars.length|0]).join('');
+    if(++i>txt.length){clearInterval(iv);el.textContent=txt}
+  },26);
+}
+function runCounter(el){
+  const n=+el.dataset.n,suf=el.dataset.suf||'';
+  if(reduced){el.textContent=n.toLocaleString('ru-RU')+suf;return}
+  const t0=performance.now(),dur=1400;
+  (function f(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    el.textContent=Math.round(n*e).toLocaleString('ru-RU')+suf;
+    if(p<1)requestAnimationFrame(f)})(t0);
+}
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return;
+  e.target.classList.add('in');
+  if(e.target.hasAttribute('data-scramble')&&!reduced)scramble(e.target);
+  e.target.querySelectorAll('[data-n]').forEach(runCounter);
+  io.unobserve(e.target);
+}),{threshold:.16});
+$$('.rv').forEach(el=>io.observe(el));
+setTimeout(()=>document.body.classList.add('loaded'),80);
+
+/* ---------- console queue loop ---------- */
+const conItems=$$('.con-item');
+const labels={pub:'Опубликовано',ing:'Публикуем…',plan:'Отложено'};
+function setSt(item,st){
+  item.dataset.st=st;
+  item.querySelector('.con-st').textContent=labels[st];
+  const bar=item.querySelector('.bar i');
+  bar.style.width=st==='pub'?'100%':st==='plan'?'0%':bar.style.width;
+}
+if(!reduced){
+  setInterval(()=>{
+    const ing=conItems.find(i=>i.dataset.st==='ing');
+    if(ing){
+      const bar=ing.querySelector('.bar i');let w=(parseFloat(bar.style.width)||0)+34;
+      if(w>=100){setSt(ing,'pub');
+        const next=conItems.find(i=>i.dataset.st==='plan');
+        if(next)setSt(next,'ing');else setTimeout(()=>conItems.forEach(i=>setSt(i,i===conItems[0]?'pub':'plan')),2600);
+      }else bar.style.width=w+'%';
+    }else{
+      const next=conItems.find(i=>i.dataset.st==='plan');
+      if(next)setSt(next,'ing');else conItems.forEach((i,k)=>setSt(i,k===0?'pub':'plan'));
+    }
+  },1400);
+}else{conItems.forEach((i,k)=>setSt(i,k===0?'ing':'plan'))}
+
+/* ---------- mobile menu ---------- */
+$('#burger').addEventListener('click',()=>$('#mmenu').classList.toggle('open'));
+$$('#mmenu a').forEach(a=>a.addEventListener('click',()=>$('#mmenu').classList.remove('open')));
+
+/* ---------- modals ---------- */
+const overlay=$('#overlay');let lastFocus=null;
+function openModal(id){
+  lastFocus=document.activeElement;
+  overlay.hidden=false;
+  $$('.modal').forEach(m=>m.hidden=true);
+  $('#'+id).hidden=false;
+  requestAnimationFrame(()=>overlay.classList.add('on'));
+  document.body.style.overflow='hidden';
+}
+function closeModal(){
+  overlay.classList.remove('on');
+  setTimeout(()=>{overlay.hidden=true;document.body.style.overflow=''},240);
+  if(lastFocus)lastFocus.focus();
+}
+overlay.addEventListener('click',e=>{if(e.target===overlay||e.target.closest('[data-close]'))closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeDrawer()}});
+$$('[data-lead]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();openModal('m-lead')}));
+$$('[data-auth]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();resetAuthMsg();openModal('m-auth')}));
+
+/* ---------- thanks ---------- */
+function openThanks(kind,email){
+  if(kind==='promo'){
+    $('#th-title').textContent='Месяц «Профи» закреплён!';
+    $('#th-body').textContent=`Промокод отправлен на ${email}. Активируйте его в течение 48 часов — и наслаждайтесь безлимитом.`;
+  }else{
+    $('#th-title').textContent='Заявка принята!';
+    $('#th-body').textContent='Уже отправляем письмо с доступом. Проверьте почту через пару минут — и добро пожаловать в ASP.';
+  }
+  openModal('m-thanks');
+}
+
+/* ---------- lead form ---------- */
+$('#lead-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=$('#f-name'),mail=$('#f-email');let ok=true;
+  [name,mail].forEach(i=>i.classList.remove('err'));
+  if(name.value.trim().length<2){name.classList.add('err');ok=false}
+  if(!emailRe.test(mail.value.trim())){mail.classList.add('err');ok=false}
+  $('#lead-err').classList.toggle('on',!ok);
+  if(!ok)return;
+  if(!authed)userName=name.value.trim()+(name.value.trim().split(' ')[1]?'':' Ким');
+  closeModal();setTimeout(()=>openThanks('lead'),260);
+});
+
+/* ---------- promo form ---------- */
+$('#promo-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const inp=$('#promo-email');inp.classList.remove('err');
+  if(!emailRe.test(inp.value.trim())){inp.classList.add('err');toast('Введите корректную почту','err');return}
+  openThanks('promo',inp.value.trim());inp.value='';
+});
+
+/* ---------- auth ---------- */
+let authMode='login';
+$$('.auth-tab').forEach(t=>t.addEventListener('click',()=>{
+  authMode=t.dataset.tab;
+  $$('.auth-tab').forEach(x=>x.classList.toggle('on',x===t));
+  $('#reg-name-wrap').hidden=authMode!=='reg';
+  $('#auth-submit').textContent=authMode==='reg'?'Создать аккаунт':'Войти';
+  resetAuthMsg();
+}));
+function authMsg(ok,text){
+  const m=$('#auth-msg');
+  m.className='auth-msg on '+(ok?'ok':'bad');
+  m.innerHTML=`<svg style="width:15px;height:15px;flex:none"><use href="#i-${ok?'check':'x'}"/></svg>${text}`;
+}
+function resetAuthMsg(){$('#auth-msg').className='auth-msg'}
+function authSuccess(name,source){
+  authed=true;
+  if(name)userName=name;
+  $('#btn-auth').textContent='Кабинет';
+  $('#btn-cabinet-top').hidden=false;
+  authMsg(true,`Авторизация успешна${source?' через '+source:''}. Открываем кабинет…`);
+  setTimeout(()=>{closeModal();showCabinet()},900);
+}
+$$('.soc-btn').forEach(b=>b.addEventListener('click',()=>authSuccess(null,b.dataset.soc)));
+$('#auth-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const mail=$('#a-email').value.trim(),pass=$('#a-pass').value;
+  if(!emailRe.test(mail)){authMsg(false,'Неуспешная авторизация: проверьте формат почты.');return}
+  if(pass.length<4){authMsg(false,'Неуспешная авторизация: пароль слишком короткий.');return}
+  const nm=authMode==='reg'?($('#a-name').value.trim()||null):null;
+  authSuccess(nm);
+});
+$('#btn-auth').addEventListener('click',()=>{authed?showCabinet():(resetAuthMsg(),openModal('m-auth'))});
+$('#btn-cabinet-top').addEventListener('click',showCabinet);
+$('#foot-cabinet').addEventListener('click',()=>{authed?showCabinet():(resetAuthMsg(),openModal('m-auth'))});
+
+/* ---------- cabinet: view switch ---------- */
+function showCabinet(){
+  if(!authed){resetAuthMsg();openModal('m-auth');return}
+  document.body.classList.add('cabinet-mode');
+  window.scrollTo(0,0);
+  applyUser();renderQueue();
+}
+function showLanding(){
+  document.body.classList.remove('cabinet-mode');
+  window.scrollTo(0,0);
+}
+$('#exit-btn').addEventListener('click',()=>{showLanding();toast('Вы вышли на сайт. Ждём снова!')});
+$$('.js-exit').forEach(b=>b.addEventListener('click',()=>{closeDrawer();showLanding();toast('Вы вышли на сайт. Ждём снова!')}));
+function applyUser(){
+  $('#user-name').textContent=userName;
+  $$('.js-uname').forEach(e=>e.textContent=userName);
+  $('#greet-name').textContent=userName.split(' ')[0];
+}
+applyUser();
+
+/* ---------- cabinet nav ---------- */
+const titles={overview:'Обзор',create:'Создать пост',schedule:'Расписание',accounts:'Аккаунты',analytics:'Аналитика'};
+function go(panel){
+  $$('.panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===panel));
+  $$('[data-go]').forEach(b=>b.classList.toggle('active',b.dataset.go===panel));
+  $('#cab-title').textContent=titles[panel];
+  closeDrawer();
+  window.scrollTo(0,0);
+  if(panel==='overview'){$('#ov-queue').innerHTML='';renderOvQueue()}
+}
+$$('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+
+/* ---------- drawer ---------- */
+function closeDrawer(){$('#drawer').hidden=true;$('#drawer').classList.remove('on')}
+$('#btn-drawer').addEventListener('click',()=>{$('#drawer').hidden=false;requestAnimationFrame(()=>$('#drawer').classList.add('on'))});
+$('#drawer .d-ov').addEventListener('click',closeDrawer);
+
+/* ---------- posts state ---------- */
+const NETS={tg:['TG','n-tg','Telegram'],vk:['VK','n-vk','ВКонтакте'],yt:['YT','n-yt','YouTube'],ok:['OK','n-ok','Одноклассники'],dz:['ДЗ','n-dz','Дзен']};
+let posts=[
+  {t:'Shorts: бэкстейдж съёмки',nets:['yt','tg'],when:'Сегодня, 18:00',st:'Отложено'},
+  {t:'Подборка подкастов недели',nets:['ok'],when:'Сегодня, 21:15',st:'Отложено'},
+  {t:'Утренний дайджест #123',nets:['tg','vk'],when:'Вчера, 09:00',st:'Опубликовано'},
+  {t:'Кейс: охват ×3 за неделю',nets:['dz','vk'],when:'3 сентября, 12:00',st:'Ошибка'},
+];
+const stClass={'Отложено':'st-wait','Публикуем':'st-ing','Опубликовано':'st-ok','Ошибка':'st-err'};
+function chip(n){const x=NETS[n];return `<span class="nchip ${x[1]}" title="${x[2]}">${x[0]}</span>`}
+function renderQueue(){
+  $('#queue-list').innerHTML=posts.map(p=>`
+    <div class="q-item">
+      <div class="q-nets">${p.nets.map(chip).join('')}</div>
+      <div class="q-txt"><b>${p.t}</b><small>${p.when}</small></div>
+      <span class="st ${stClass[p.st]}">${p.st}</span>
+    </div>`).join('');
+  $('#q-total').textContent=posts.length+' записей';
+  const q=posts.filter(p=>p.st==='Отложено').length;
+  $('#q-count').textContent=q;$('#q-count2').textContent=q;
+}
+function renderOvQueue(){
+  $('#ov-queue').innerHTML=posts.slice(0,3).map(p=>`
+    <div class="q-item">
+      <div class="q-nets">${p.nets.map(chip).join('')}</div>
+      <div class="q-txt"><b>${p.t}</b><small>${p.when}</small></div>
+      <span class="st ${stClass[p.st]}">${p.st}</span>
+    </div>`).join('');
+}
+renderQueue();renderOvQueue();
+
+/* ---------- composer ---------- */
+const ta=$('#post-text');
+ta.addEventListener('input',()=>{
+  const len=ta.value.length;
+  $('#post-count').textContent=len+' / 4096';
+  $('#post-count').style.color=len>4096?'var(--red)':'var(--mut)';
+  $('#pv-text').textContent=ta.value||'Текст записи появится здесь — начните печатать слева…';
+});
+$$('.net-chip').forEach(c=>c.addEventListener('click',()=>{
+  const on=$$('.net-chip.on');
+  if(c.classList.contains('on')&&on.length===1){toast('Выберите хотя бы одну соцсеть','err');return}
+  c.classList.toggle('on');renderPvNets();
+}));
+function selNets(){return $$('.net-chip.on').map(c=>c.dataset.net)}
+function renderPvNets(){$('#pv-nets').innerHTML=selNets().map(chip).join('')}
+renderPvNets();
+$$('input[name="mode"]').forEach(r=>r.addEventListener('change',()=>{
+  const later=document.querySelector('input[name="mode"]:checked').value==='later';
+  $('#post-time').hidden=!later;
+  $('#post-submit').textContent=later?'Добавить в очередь':'Опубликовать сейчас';
+  updatePvTime();
+}));
+function fmtTime(v){
+  if(!v)return'';
+  const d=new Date(v);
+  return d.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})+', '+d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+}
+$('#post-time').addEventListener('change',updatePvTime);
+function updatePvTime(){
+  const later=document.querySelector('input[name="mode"]:checked').value==='later';
+  $('#pv-time').textContent=later?('запланировано · '+(fmtTime($('#post-time').value)||'выберите время')):'сейчас';
+}
+$('#post-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const nets=selNets(),text=ta.value.trim(),later=document.querySelector('input[name="mode"]:checked').value==='later';
+  if(!text){toast('Добавьте текст записи','err');ta.focus();return}
+  if(text.length>4096){toast('Текст длиннее 4096 символов','err');return}
+  if(later&&!$('#post-time').value){toast('Выберите дату и время публикации','err');return}
+  const now=new Date();
+  posts.unshift({
+    t:text.length>52?text.slice(0,52)+'…':text,
+    nets,
+    when:later?fmtTime($('#post-time').value):'Сегодня, '+now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),
+    st:later?'Отложено':'Опубликовано'
+  });
+  if(!later)$('#pub-count').textContent=+$('#pub-count').textContent+1;
+  renderQueue();
+  ta.value='';$('#post-count').textContent='0 / 4096';$('#pv-text').textContent='Текст записи появится здесь — начните печатать слева…';
+  toast(later?'Пост добавлен в очередь':'Пост опубликован в '+nets.map(n=>NETS[n][2]).join(', '));
+  go('schedule');
+});
+
+/* ---------- account toggles ---------- */
+$$('.sw input').forEach(sw=>sw.addEventListener('change',()=>{
+  const em=sw.closest('.sw-wrap').querySelector('em');
+  em.textContent=sw.checked?'Активен':'Пауза';
+  em.classList.toggle('off',!sw.checked);
+  const name=sw.closest('.acc-row').querySelector('b').textContent;
+  toast(sw.checked?`«${name}» подключён к публикации`:`«${name}» — публикация на паузе`);
+}));
+})();
+</script>
+</body>
+</html>
